@@ -77,6 +77,12 @@ def clean_measurements(text):
     except:
         return None
 
+def add_link_base(text):
+    if "https" in text:
+        return text
+    else:
+        text = "https://www.alltrails.com"+text
+        return text
 
 if __name__ == "__main__":
     conn=psycopg2.connect(database='alltrails', user='postgres', host='127.0.0.1', port= '5432')
@@ -85,6 +91,7 @@ if __name__ == "__main__":
     hikes_df['cleaned_descriptions'] = clean_corpus(hikes_df['trail_description'])
     hikes_df['trail_length'] = hikes_df['trail_length'].apply(clean_measurements)
     hikes_df['trail_elevation'] = hikes_df['trail_elevation'].apply(clean_measurements)
+    hikes_df['link'] = hikes_df['link'].apply(add_link_base)
     hikes_df.to_csv('../src/clean_all_hikes.csv')
 
     q = "SELECT * FROM reviews;"
