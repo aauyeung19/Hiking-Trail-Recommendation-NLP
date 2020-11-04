@@ -21,7 +21,7 @@ from sklearn.metrics.pairwise import cosine_distances
 import numpy as np
 
 # Method for determining Similar hikes
-def compare_hikes_by_desc(pipe, hikes_df, hikes_dtm, hike_id, n_hikes_to_show):
+def compare_hikes_by_desc(pipe, hikes_df, hike_id, n_hikes_to_show):
     """
     Searches the hikes_df for hikes that are similar by cosine distance to the given hike_id. 
     Limits the search to the n_hikes_to_show
@@ -33,6 +33,7 @@ def compare_hikes_by_desc(pipe, hikes_df, hikes_dtm, hike_id, n_hikes_to_show):
     returns:
         Filtered Dataframe with hikes that are close in cosine distance to the given hike. 
     """
+    hikes_dtm = pipe.vectorizer.transform(hikes_df['cleaned_descriptions'])
     hikes_df, topics = pipe.topic_transform_df(hikes_df, hikes_dtm, append_max=False)
     X = hikes_df[topics]
     y = hikes_df.loc[[hike_id]][topics]
@@ -69,14 +70,12 @@ def user_recommendation(id, reviews):
     r_.corrwith(user)
 
 if __name__ == "__main__":
-    hikes_df = pd.read_csv('../src/cleaned_all_hikes.csv')
+    hikes_df = pd.read_csv('../src/clean_all_hikes.csv')
     # hikes_df = pickle.load(open('../src/cleaned_hike_desc.pickle', 'rb'))
     hikes_df.set_index('hike_id', inplace=True) 
     # Method for filtering conditions from DataFrame
     pipe = NLPPipe()
     pipe.load_pipe(filename='../models/nmf_trail_desc.mdl')
-    hikes_df['cleaned_descriptions'] = pipe.cleaning_function(hikes_df['trail_description'])
-    hikes_dtm = pipe.vectorizer.transform(hikes_df['cleaned_descriptions'])
-    # hikes_df, topics = pipe.topic_transform_df(hikes_df, hikes_dtm, append_max=False)
-    sum([hikes_df['state'].isin(['New Jersey']), hikes_df['state'].isin(['New York'])]).astype(bool)
-    check = compare_hikes_by_desc(pipe, hikes_df, hikes_dtm, 'hike_11219', 20)
+
+    # Filter First
+    check = compare_hikes_by_desc(pipe, hikes_df, 'hike_219', 20)
