@@ -17,10 +17,22 @@ System 2: Determining distance metrics based on trail descriptions from NMF
 from nlp import NLPPipe
 import pandas as pd
 import pickle
-from sklearn.metrics.pairwise import cosine_distances
+from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
 import numpy as np
 from copy import deepcopy
+from reviews_embeddings import get_embedded_vectors
 
+
+def compare_by_cosine_distance(X, y, n_to_limit=None):
+    """
+    Helper Function to compare one vectorized component (y)
+    to a matrix of vectors (X)
+    Returns the top n_to_limit closest values in X
+    """
+    idx = np.argsort(cosine_distances(X, y), axis=0)[:n_to_limit]
+    idx = idx.reshape(1,-1)[0]
+    return idx
+    
 # Method for determining Similar hikes
 def compare_hikes_by_desc(pipe, hikes_df, hike_id, n_hikes_to_show):
     """
@@ -37,8 +49,23 @@ def compare_hikes_by_desc(pipe, hikes_df, hike_id, n_hikes_to_show):
     hikes_df, topics = pipe.topic_transform_df(hikes_df, hikes_dtm, append_max=False)
     X = hikes_df[topics]
     y = hikes_df.loc[[hike_id]][topics]
-    similar_hike_idx = np.argsort(cosine_distances(X, y), axis=0)[:n_hikes_to_show]
-    similar_hike_idx = similar_hike_idx.reshape(1,-1)[0]
+    similar_hike_idx = compare_by_cosine_distance(X, y, n_hikes_to_show)
+    return hikes_df.iloc[similar_hike_idx]
+
+def compare_hikes_by_desc_vec(hikes_df, hike_id, n_hikes_to_show):
+    """
+    Compares hike Descriptions based on the vectorized forms of their 
+    words. 
+    args:
+        hikes_df (dataframe): dataframe containing all the hike information
+        hike_dtm (dataframe): Document Term Matrix of the hikes_df
+        n_hikes_to_show (int): Number of results to limit hikes to
+    returns:
+        Filtered Dataframe with hikes that are close in cosine distance to the given hike. 
+    """
+    emb_vecs = get_embedded_vectors(hikes_df['cleaned_descriptions'])
+    comp_vec = get_embedded_vectors([hikes_df.loc[hike_id]['cleaned_descriptions']])
+    similar_hike_idx = compare_by_cosine_distance(emb_vecs, comp_vec, n_hikes_to_show)
     return hikes_df.iloc[similar_hike_idx]
 
 # Write method for filtering down by State/Park
@@ -72,14 +99,20 @@ def filter_hikes(hikes_df, states=None, parks=None, max_len=None, min_len=0):
     return filtered_hikes
 
 
-def user_recommendation(comp_id, reviews):
+def user_recommendation(comp_id, r_):
     """
-    id - selected id to compare
-    reviews - filtered review dataframe 
+    Collaborative Filtering for Recommendation
+    comp_id - selected id to compare
+    r_ - filtered review dataframe 
     """
     r_piv = r_.pivot_table(columns='hike_id', index='user_id', values='user_rating')
     user = r_piv.loc[:,comp_id]
-    r_piv.corrwith(user)
+    results = r_piv.corrwith(user)
+    colab_top = results.dropna().sort_values(ascending=False).index
+    if len(colab_top) == 1:
+        return None
+    else:
+        return colab_top
 
 if __name__ == "__main__":
     hikes_df = pd.read_csv('../src/clean_all_hikes.csv', index_col=0)
@@ -93,22 +126,23 @@ if __name__ == "__main__":
     states = ['New Jersey', 'New York']
     filtered_hikes = filter_hikes(hikes_df, states)
     
+    emb_vecs = get_embedded_vectors(filtered_hikes['cleaned_descriptions'])
     # want to check specific hikes
     comp_id = 'hike_5'
+    comp_vec = get_embedded_vectors([filtered_hikes.loc[comp_id]['cleaned_descriptions']])
+    similar = cosine_distances(emb_vecs, comp_vec)
 
     # Get 20 hikes by topic cosine closeness
-    check = compare_hikes_by_desc(pipe, filtered_hikes, comp_id, 20)
+    similar_topics = compare_hikes_by_desc(pipe, filtered_hikes, comp_id, 20)
 
     # load reviews
     reviews_df = pd.read_csv('../src/clean_reviews.csv', index_col=0)
     reviews_df.set_index('hike_id', inplace=True)
-    
+
     # Filter Reviews down to subset of the top 20 closest reviews
-    r_ = reviews_df.loc[check.index]
+    r_ = reviews_df.loc[similar_topics.index]
 
+    collab_idx = user_recommendation(comp_id, r_)
+    collab_hikes = hikes_df.loc[collab_idx]
 
-    r_piv = r_.pivot_table(columns='hike_id', index='user_id', values='user_rating')
-    user = r_piv.loc[:,comp_id]
-    results = r_piv.corrwith(user)
-    colab_top = results.dropna().sort_values(ascending=False).head(10).index
-    hikes_df.loc[top_5]
+    ### How to combine results? We'll see. 
