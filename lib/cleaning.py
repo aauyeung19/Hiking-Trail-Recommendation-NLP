@@ -44,6 +44,11 @@ def remove_loc(text):
     filtered_sentence = [word for word in sentence if word.ent_type=='GPE']
     text = ' '.join(filtered_sentence)
     return text
+    
+# Remove Pronouns:
+def remove_pron(text):
+    text = re.sub(r'[-PRON-]', '', text)
+    return text
 
 def clean_corpus(corpus):
     cleaned_corpus = []
@@ -57,6 +62,8 @@ def clean_corpus(corpus):
         doc = lemma(doc)
         # remove stop words
         doc = remove_stopwords(doc)
+        # remove pronouns
+        doc = remove_pron(doc)
 
         cleaned_corpus.append(doc)
     
@@ -98,4 +105,5 @@ if __name__ == "__main__":
     reviews_df = pd.read_sql_query(q, conn)
     reviews_df.dropna(inplace=True)
     reviews_df['cleaned_reviews'] = clean_corpus(reviews_df['user_desc'])
+    reviews_df['user_rating'] = reviews_df['user_rating'].apply(convert_rating)
     reviews_df.to_csv('../src/clean_reviews.csv')
