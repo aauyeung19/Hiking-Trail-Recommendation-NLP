@@ -32,7 +32,7 @@ def compare_by_cosine_distance(X, y, n_to_limit=None):
     idx = np.argsort(cosine_distances(X, y), axis=0)[:n_to_limit]
     idx = idx.reshape(1,-1)[0]
     return idx
-    
+
 # Method for determining Similar hikes
 def compare_hikes_by_desc(pipe, hikes_df, hike_id, n_hikes_to_show):
     """
@@ -52,6 +52,7 @@ def compare_hikes_by_desc(pipe, hikes_df, hike_id, n_hikes_to_show):
     similar_hike_idx = compare_by_cosine_distance(X, y, n_hikes_to_show)
     return hikes_df.iloc[similar_hike_idx]
 
+############# FOR OPTIMIZATION: SAVE VECTORS INTO THE DOCUMENT
 def compare_hikes_by_desc_vec(hikes_df, hike_id, n_hikes_to_show):
     """
     Compares hike Descriptions based on the vectorized forms of their 
@@ -126,15 +127,16 @@ if __name__ == "__main__":
     states = ['New Jersey', 'New York']
     filtered_hikes = filter_hikes(hikes_df, states)
     
-    emb_vecs = get_embedded_vectors(filtered_hikes['cleaned_descriptions'])
     # want to check specific hikes
     comp_id = 'hike_5'
-    comp_vec = get_embedded_vectors([filtered_hikes.loc[comp_id]['cleaned_descriptions']])
-    similar = cosine_distances(emb_vecs, comp_vec)
+
 
     # Get 20 hikes by topic cosine closeness
     similar_topics = compare_hikes_by_desc(pipe, filtered_hikes, comp_id, 20)
 
+    # Embedded top 20
+    similar_vecs = compare_hikes_by_desc_vec(filtered_hikes, comp_id, 20)
+    
     # load reviews
     reviews_df = pd.read_csv('../src/clean_reviews.csv', index_col=0)
     reviews_df.set_index('hike_id', inplace=True)
