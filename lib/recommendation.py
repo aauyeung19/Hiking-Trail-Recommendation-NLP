@@ -14,6 +14,8 @@ System 2: Determining distance metrics based on trail descriptions from NMF
 --- Return 5 closest with either cosine or euclidean distance?
 --- OR --- KMeansClusters to determine similar hikes.  I.e Two hikes may be good with waterfalls and good with flowers
 """
+
+
 from nlp import NLPPipe
 import pandas as pd
 import pickle
@@ -45,14 +47,16 @@ def compare_hikes_by_desc(pipe, hikes_df, hike_id, n_hikes_to_show):
     returns:
         Filtered Dataframe with hikes that are close in cosine distance to the given hike. 
     """
+    if type(hike_id) == str:
+        hike_id = [hike_id]
     hikes_dtm = pipe.vectorizer.transform(hikes_df['cleaned_descriptions'])
     hikes_df, topics = pipe.topic_transform_df(hikes_df, hikes_dtm, append_max=False)
     X = hikes_df[topics]
-    y = hikes_df.loc[[hike_id]][topics]
+    y = hikes_df.loc[hike_id][topics]
     similar_hike_idx = compare_by_cosine_distance(X, y, n_hikes_to_show)
     return hikes_df.iloc[similar_hike_idx]
 
-############# FOR OPTIMIZATION: SAVE VECTORS INTO THE DOCUMENT
+############# FOR OPTIMIZATION: SAVE VECTORS INTO THE DOCUMENT 
 def compare_hikes_by_desc_vec(hikes_df, hike_id, n_hikes_to_show):
     """
     Compares hike Descriptions based on the vectorized forms of their 
@@ -65,7 +69,7 @@ def compare_hikes_by_desc_vec(hikes_df, hike_id, n_hikes_to_show):
         Filtered Dataframe with hikes that are close in cosine distance to the given hike. 
     """
     emb_vecs = get_embedded_vectors(hikes_df['cleaned_descriptions'])
-    comp_vec = get_embedded_vectors([hikes_df.loc[hike_id]['cleaned_descriptions']])
+    comp_vec = get_embedded_vectors([hikes_df.loc[hike_id, 'cleaned_descriptions']])
     similar_hike_idx = compare_by_cosine_distance(emb_vecs, comp_vec, n_hikes_to_show)
     return hikes_df.iloc[similar_hike_idx]
 
@@ -95,7 +99,12 @@ def filter_hikes(hikes_df, states=None, parks=None, max_len=None, min_len=0):
     if min_len:
         mask = hikes_df['trail_length'] > min_len
         all_masks.append(mask)
-    filtered_hikes = deepcopy(hikes_df[sum(all_masks).astype(bool)])
+
+    if all_masks:
+        filtered_hikes = deepcopy(hikes_df[sum(all_masks).astype(bool)])
+    else:
+        print('Warning! No Filters Applied to Dataframe')
+        filtered_hikes = deepcopy(hikes_df)
     
     return filtered_hikes
 
@@ -123,13 +132,21 @@ if __name__ == "__main__":
     pipe = NLPPipe()
     pipe.load_pipe(filename='../models/nmf_trail_desc.mdl')
 
-    # Filter by State for testing
-    states = ['New Jersey', 'New York']
-    filtered_hikes = filter_hikes(hikes_df, states)
-    
-    # want to check specific hikes
-    comp_id = 'hike_5'
+    # Select one hike from New Jersey for Comparision 
+    nj = ['New Jersey']
+    nj_hikes = filter_hikes(hikes_df, nj)
+   # want to check specific hikes
+    comp_id = np.random.choice(nj_hikes.index)
 
+
+    # Filter by State for testing
+    states = ['New York', 'Connecticut', 'Vermont', 'Maine',
+       'Maryland', 'Colorado', 'Pennsylvania', 'New Hampshire',
+       'Rhode Island', 'Massachusetts', 'Virginia', 'Tennessee',
+       'North Carolina', 'Washington', 'West Virginia', 'Ohio',
+       'South Carolina']
+    filtered_hikes = filter_hikes(hikes_df, states)
+    filtered_hikes = pd.concat([filtered_hikes, nj_hikes.loc[[comp_id]]])
 
     # Get 20 hikes by topic cosine closeness
     similar_topics = compare_hikes_by_desc(pipe, filtered_hikes, comp_id, 20)
@@ -147,4 +164,5 @@ if __name__ == "__main__":
     collab_idx = user_recommendation(comp_id, r_)
     collab_hikes = hikes_df.loc[collab_idx]
 
+    hikes_df.loc['hike_8002']['link']
     ### How to combine results? We'll see. 
