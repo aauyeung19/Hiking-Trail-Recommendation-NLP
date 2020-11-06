@@ -69,14 +69,32 @@ def tag_reviews_spacy(topics, topic_keywords, text, sp=sp):
 
 if __name__ == "__main__":
 
-    topic_labels = [['busy crowded congested lots'],
-    'Big Climb': ['rocky']
-    'Flat',
-    'Waterfall',
-    'Exercise',
-    'Boots or Sneakers'
-    'Dirty': ['litter trash']
-]
+    topic_labels = [
+        'water',
+        'floral',
+        'mountain',
+        'forest',
+        'clean',
+        'danger',
+        'busy',
+        'rocky',
+        'family',
+        'unmaintained',
+        'buggy'
+    ]
+    topic_kws = [
+        'water waterfall river lake pond',
+        'flowers wildflowers',
+        'overlook view mountain top ridge cliff lookout',
+        'wood forest tree brush log',
+        'well marked maintained clean',
+        'dangerous careful',
+        'full parking lot busy crowd',
+        'boulder rocky scramble stair',
+        'family young kid son daughter parent mom dad',
+        'overgrown brush thick hard',
+        'bug gnat mosquito sticky humid'
+    ]
 
 """
 Review Tags:
@@ -91,4 +109,5 @@ Review Tags:
 - keywords: flowers floral pretty wildflowers 
 - multi-use / Running Friendly keywords: family kid 
 - forest keywords: forest tree evergreen 
+
 """
