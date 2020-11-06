@@ -50,6 +50,7 @@ def remove_pron(text):
     text = re.sub(r'[-PRON-]', '', text)
     return text
 
+
 def clean_corpus(corpus):
     cleaned_corpus = []
 
@@ -68,6 +69,36 @@ def clean_corpus(corpus):
         cleaned_corpus.append(doc)
     
     return cleaned_corpus
+
+def clean_reviews_by_sentence(df):
+    """
+    Tokenizes corpus by sentence, lemmatizes words, and remove punctuation. 
+    """
+    clean_rev = []
+    for _, curr_row in df.iterrows():
+        hike_id = curr_row['hike_id']
+        user_id = curr_row['user_id']
+        date = curr_row['date']
+        user_desc = curr_row['user_desc']
+        user_rating = curr_row['user_rating']
+        
+        review_sents = sp(str(user_desc).lower()).sents
+        for sent in review_sents:
+            curr_sent = [word.lemma_ for word in sent if not word.is_punct]
+            curr_sent = [word for word in curr_sent if word not in stopwords_list]
+            curr_sent = " ".join(curr_sent)
+            clean_rev.append({
+                'hike_id': hike_id,
+                'user_id': user_id,
+                'date': date,
+                'user_desc': user_desc,
+                'user_rating': user_rating,
+                'clean_review': curr_sent
+            })
+
+    clean_rev = pd.DataFrame(data=clean_rev, columns=['hike_id', 'user_id', 'date', 'user_desc', 'user_rating', 'cleaned_desc'])
+    return clean_rev
+
 
 def convert_rating(rating):
     first = rating[0]
@@ -107,3 +138,8 @@ if __name__ == "__main__":
     reviews_df['cleaned_reviews'] = clean_corpus(reviews_df['user_desc'])
     reviews_df['user_rating'] = reviews_df['user_rating'].apply(convert_rating)
     reviews_df.to_csv('../src/clean_reviews.csv')
+
+    # split by period into individual rows while keeping hike_id and user_id combination 
+    reviews_by_sent = clean_reviews_by_sentence(reviews_df)
+    reviews_by_sent.to_csv('../src/reviews_by_sent.csv')
+    
