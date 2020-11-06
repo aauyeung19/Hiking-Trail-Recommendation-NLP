@@ -4,6 +4,9 @@
 Methods in this file are used to tag reviews using their cosine similarity
 to named topic keywords
 """
+import pandas as pd
+import copy
+import seaborn as sns
 
 import spacy
 import numpy as np
@@ -11,13 +14,32 @@ from sklearn.metrics.pairwise import cosine_similarity, cosine_distances
 sp = spacy.load('en_core_web_md')
 
 
-########## 
-# Think about making multiple tags
-# Make a pipeline for feeding in topic labels and keywords 
-# Have this pipeline return the tags for an associated review
-# Aggregate the tags via voting from the reviews for a trail
-# Append them to the tags list on hikes_df
-##########
+topic_labels = [
+    'water',
+    'floral',
+    'mountain',
+    'forest',
+    'clean',
+    'danger',
+    'busy',
+    'rocky',
+    'family',
+    'unmaintained',
+    'buggy'
+]
+topic_kws = [
+    'water waterfall river lake',
+    'flowers wildflowers',
+    'ridge cliff lookout',
+    'wood forest tree brush log',
+    'marked maintained clean',
+    'dangerous scary',
+    'populated busy crowd parking',
+    'boulder rocky scramble stair',
+    'family young',
+    'overgrown brush thick hard',
+    'bug gnat mosquito sticky humid'
+]
 
 def get_embedded_vectors(words, sp=sp):
     """
@@ -39,7 +61,7 @@ def get_embedded_vectors(words, sp=sp):
     word_vectors = np.array(word_vectors)
     return word_vectors
 
-def tag_reviews_spacy(topics, topic_keywords, text, sp=sp):
+def tag_reviews_spacy(text, topics=topic_labels, topic_keywords=topic_kws, sp=sp):
     """
     Searches text and returns labeled topics using given keywords
     with similar cosine distances.
@@ -69,33 +91,20 @@ def tag_reviews_spacy(topics, topic_keywords, text, sp=sp):
 
 if __name__ == "__main__":
 
-    topic_labels = [
-        'water',
-        'floral',
-        'mountain',
-        'forest',
-        'clean',
-        'danger',
-        'busy',
-        'rocky',
-        'family',
-        'unmaintained',
-        'buggy'
-    ]
-    topic_kws = [
-        'water waterfall river lake pond',
-        'flowers wildflowers',
-        'overlook view mountain top ridge cliff lookout',
-        'wood forest tree brush log',
-        'well marked maintained clean',
-        'dangerous careful',
-        'full parking lot busy crowd',
-        'boulder rocky scramble stair',
-        'family young kid son daughter parent mom dad',
-        'overgrown brush thick hard',
-        'bug gnat mosquito sticky humid'
-    ]
+    reviews_df = pd.read_csv('../src/clean_reviews.csv', index_col=0)
+    reviews_df.set_index('hike_id', inplace=True)
+    reviews_df.dropna(inplace=True)
+    reviews_df['cleaned_reviews'] = reviews_df['cleaned_reviews'].map(str)
+    
+    stop_words = ['great', 'good', 'fun', 'nice', 'easy', 'love']
+    reviews_df['cleaned_reviews'] = reviews_df['cleaned_reviews'].map(lambda text: ' '.join([word for word in text.split() if word not in stop_words]))
 
+    r_ = copy.deepcopy(reviews_df.loc[np.random.choice(reviews_df.index)])
+    tags = tag_reviews_spacy(text=r_['cleaned_reviews'], topics=topic_labels, topic_keywords=topic_kws)
+    r_['review_tags'] = tags
+    sns.countplot(y=tags, orient='h')
+    print(r_.index.unique()[0])
+    temp = r_[['cleaned_reviews', 'review_tags']]
 """
 Review Tags:
 - Popularity: Keywords: busy crowded congested lots no parking 
