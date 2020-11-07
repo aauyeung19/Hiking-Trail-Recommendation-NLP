@@ -49,6 +49,7 @@ def compare_hikes_by_desc(pipe, hikes_df, hike_id, n_hikes_to_show):
     """
     if type(hike_id) == str:
         hike_id = [hike_id]
+    # After everything is done we can change this to just save the transformed data in a CSV.
     hikes_dtm = pipe.vectorizer.transform(hikes_df['cleaned_descriptions'])
     hikes_df, topics = pipe.topic_transform_df(hikes_df, hikes_dtm, append_max=False)
     X = hikes_df[topics]
@@ -88,20 +89,21 @@ def filter_hikes(hikes_df, states=None, parks=None, max_len=None, min_len=0):
     """
     all_masks = []
     if states:
-        mask = hikes_df['state'].isin(states)
+        mask = "(hikes_df['state'].isin(states))"
         all_masks.append(mask)
     if parks:
-        mask = hikes_df['park'].isin(parks)
+        mask = "(hikes_df['park'].isin(parks))"
         all_masks.append(mask)
     if max_len:
-        mask = hikes_df['trail_length'] < max_len
+        mask = "(hikes_df['trail_length'] < max_len)"
         all_masks.append(mask)
     if min_len:
-        mask = hikes_df['trail_length'] > min_len
+        mask = "(hikes_df['trail_length'] > min_len)"
         all_masks.append(mask)
 
     if all_masks:
-        filtered_hikes = deepcopy(hikes_df[sum(all_masks).astype(bool)])
+        all_masks = " & ".join(all_masks)
+        filtered_hikes = deepcopy(hikes_df[eval(all_masks)])
     else:
         print('Warning! No Filters Applied to Dataframe')
         filtered_hikes = deepcopy(hikes_df)
@@ -165,4 +167,14 @@ if __name__ == "__main__":
     collab_hikes = hikes_df.loc[collab_idx]
 
     hikes_df.loc['hike_8002']['link']
-    ### How to combine results? We'll see. 
+    r_piv
+
+    ### COMBINATION OF REVIEW AND DESCRIPTION TOPICS
+    r_piv = pd.read_csv('../src/reviews_piv.csv', index_col=0)
+    X = r_piv
+
+    comp_ids = ['hike_115', 'hike_3204', 'hike_13002']
+    y = r_piv.loc[comp_ids]
+    h_idx = X.iloc[compare_by_cosine_distance(X, y, 10)].index
+    a = hikes_df.loc[h_idx]
+    compare_hikes_by_desc(pipe, a, comp_ids, n_hikes_to_show=2)
