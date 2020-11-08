@@ -14,31 +14,38 @@ from sklearn.metrics.pairwise import cosine_similarity, cosine_distances
 sp = spacy.load('en_core_web_md')
 
 
+
 topic_labels = [
     'water',
     'floral',
-    'mountain',
     'forest',
     'clean',
     'danger',
-    'busy',
     'rocky',
     'family',
     'unmaintained',
-    'buggy'
+    'buggy',
+    'dog',
+    'photography',
+    'flat',
+    'camping',
+    'busy'
 ]
 topic_kws = [
     'water waterfall river lake',
     'flowers wildflowers',
-    'ridge cliff lookout',
     'wood forest tree brush log',
     'marked maintained clean',
     'dangerous scary',
-    'populated busy crowd parking',
     'boulder rocky scramble stair',
     'family young',
     'overgrown brush thick hard',
-    'bug gnat mosquito sticky humid'
+    'bug gnat mosquito sticky humid',
+    'dog',
+    'photo camera photoshoot',
+    'flat',
+    'camping backpack tent',
+    'crowded crowd'
 ]
 
 def get_embedded_vectors(words, sp=sp):
@@ -88,6 +95,15 @@ def tag_reviews_spacy(text, topics=topic_labels, topic_keywords=topic_kws, sp=sp
     text_topics = [topics[i] for i in topic_idx]
     return text_topics
 
+def pivot_by_tags(df, review_col_name):
+    """
+    Pivot counts of tags by hike and returns a pivot table.
+    Uses tag_reviews_spacy() method to generate tag counts. 
+    """
+    df['review_tags'] = tag_reviews_spacy(text=df[review_col_name], topics=topic_labels, topic_keywords=topic_kws)
+    df_piv = df.groupby(['hike_id', 'review_tags'], as_index=False)[review_col_name].count() \
+        .pivot_table(index='hike_id', columns='review_tags', values=review_col_name)
+    return df_piv, df
 
 if __name__ == "__main__":
 
@@ -96,27 +112,43 @@ if __name__ == "__main__":
     reviews_df.dropna(inplace=True)
     reviews_df['cleaned_reviews'] = reviews_df['cleaned_reviews'].map(str)
     
-    stop_words = ['great', 'good', 'fun', 'nice', 'easy', 'love']
+    stop_words = ['great', 'good', 'fun', 'nice', 'easy', 'love', 'awesome']
     reviews_df['cleaned_reviews'] = reviews_df['cleaned_reviews'].map(lambda text: ' '.join([word for word in text.split() if word not in stop_words]))
 
-    r_ = copy.deepcopy(reviews_df.loc[np.random.choice(reviews_df.index)])
+
+    # np.random.choice(reviews_df.index)
+    r_ = copy.deepcopy(reviews_df.iloc[:10000])
     tags = tag_reviews_spacy(text=r_['cleaned_reviews'], topics=topic_labels, topic_keywords=topic_kws)
     r_['review_tags'] = tags
     sns.countplot(y=tags, orient='h')
     print(r_.index.unique()[0])
-    temp = r_[['cleaned_reviews', 'review_tags']]
-"""
-Review Tags:
-- Popularity: Keywords: busy crowded congested lots no parking 
-- terrain type: Rocky, Swampy, Paved, Hilly, Trail, flat, steep, stairs, steps
-- difficulty:
-+ easy
-+ medium
-+ hard 
-- scenic ( overlook / mountain)  keywords: overlook mountain top
-- scenic ( waterfall / river) keywords: waterfall stream river lake water 
-- keywords: flowers floral pretty wildflowers 
-- multi-use / Running Friendly keywords: family kid 
-- forest keywords: forest tree evergreen 
+    
+    temp = r_[['user_desc', 'review_tags']]
+    # SAME thing as Count Vectorizer
+    # Creates pivot table
+    r_.reset_index(inplace=True)
+    r_piv = r_.groupby(["hike_id", "review_tags"], as_index=False)["user_id"].count() \
+        .pivot_table(index="hike_id", columns="review_tags", values="user_id")
+    # Recode above for TFIDF 
+    from sklearn.metrics import pairwise_distances
+    # standardize columns
+    r_piv = r_piv.sub(r_piv.mean(axis=1), axis=0).div(r_piv.std(axis=1), axis=0)
+    r_piv.fillna(0, inplace=True)
+    distances = pd.DataFrame(pairwise_distances(r_piv, metric='cosine'), index=r_piv.index, columns=r_piv.index)
+    distances.sort_values(by='hike_13')['hike_13']
+    r_piv.sort_values(by=['camping', 'not busy', 'water'], ascending=False)
 
-"""
+
+    ###############################################
+    # Embedded Vectors for sentences
+    ###############################################
+    r_sent = pd.read_csv("../src/reviews_by_sent.csv", index_col=0)
+    r_sent.dropna(inplace=True)
+    stop_words = ['great', 'good', 'fun', 'nice', 'easy', 'love', 'awesome', '-PRON-', 'trail']
+    r_sent['clean_review'] =r_sent['clean_review'].map(lambda text: ' '.join([word for word in text.split() if word not in stop_words]))
+    r_piv, r_sent = pivot_by_tags(r_sent, 'clean_review')
+    r_piv.fillna(0, inplace=True)
+    r_piv = r_piv.sub(r_piv.mean(axis=1), axis=0).div(r_piv.std(axis=1), axis=0)
+    r_piv.to_csv('../src/reviews_piv.csv')
+    sns.heatmap(r_piv, center=0)
+
