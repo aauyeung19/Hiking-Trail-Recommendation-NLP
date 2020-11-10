@@ -33,7 +33,8 @@ def compare_by_cosine_distance(X, y, n_to_limit=None):
     """
     idx = np.argsort(cosine_distances(X, y), axis=0)[:n_to_limit]
     idx = idx.reshape(1,-1)[0]
-    return idx
+    idx_labels = X.iloc[idx].index
+    return idx_labels
 
 # Method for determining Similar hikes
 def compare_hikes_by_desc(pipe, hikes_df, hike_id, n_hikes_to_show):
@@ -132,42 +133,57 @@ def user_recommendation(comp_id, r_):
     else:
         return colab_top
 
+def comparrison(comp_id, ht_mat, dt_mat, r_lim=50, desc_lim=10):
+    """
+    Finds the 50 most similar hikes in the reviews Hike-Topic Matrix.
+    Filters the Trail Description Topic Matrix to the top 10 most similar hikes
+    Returns the indexes of the hikes from the Hike_df
+
+    ### Important: DO NOT SORT MATRIXIES.  the ht mat and hike_df should have the same indexes
+    """
+    sim_idx = compare_by_cosine_distance(y=ht_mat.loc[[comp_id]], X=ht_mat, n_to_limit=r_lim) # 
+    comp_dt = dt_mat.loc[[comp_id]] # Create Target Description Topic Matrix
+    sim_dt = dt_mat.loc[sim_idx] # Filter Description Topic Matrix to similarly reviewed hikes
+    dt_idx = compare_by_cosine_distance(y=comp_dt, X=sim_dt, n_to_limit=desc_lim) # get indexes of top 10 similar hikes by descriptions
+    return dt_idx
+
 if __name__ == "__main__":
+    
+    # load hike info dataframe 
     hikes_df = pd.read_csv('../src/clean_all_hikes.csv', index_col=0)
-    # hikes_df = pickle.load(open('../src/cleaned_hike_desc.pickle', 'rb'))
     hikes_df.set_index('hike_id', inplace=True) 
-    # Method for filtering conditions from DataFrame
+
+    # Load Pipe
     pipe = NLPPipe()
     pipe.load_pipe(filename='../models/nmf_trail_desc.mdl')
 
     hikes_dtm = pipe.vectorizer.transform(hikes_df['cleaned_descriptions'])
     hikes_df, topics = pipe.topic_transform_df(hikes_df, hikes_dtm, append_max=False)
-    # Doc-Topic Matrix
+
+    # Description-Topic Matrix
     dt_mat = hikes_df[topics]
-    
+
     hikes_df.drop(columns=topics, inplace=True)
 
     # Prepare Hike-Tag-Matrix
-    cor_df = pd.read_csv('../src/reviews_corex.csv', index_col=0)
+    r_corex_df = pd.read_csv('../src/reviews_corex.csv', index_col=0)
     tags = ['parking', 'rock', 'ice', 'lake', 'easy', 'hard',
        'bug', 'family', 'maintain']
 
     # Rounds tags to 1 for topic importance   
-    cor_df[['parking', 'rock', 'ice', 'lake', 'easy', 'hard', 'bug', 'family', 'maintain']] = cor_df[['parking', 'rock', 'ice', 'lake', 'easy', 'hard', 'bug', 'family', 'maintain']].round(1)
+    r_corex_df[['parking', 'rock', 'ice', 'lake', 'easy', 'hard', 'bug', 'family', 'maintain']] = r_corex_df[['parking', 'rock', 'ice', 'lake', 'easy', 'hard', 'bug', 'family', 'maintain']].round(1)
     # hike tag matrix
-    ht_mat = cor_df.groupby('hike_id')['parking', 'rock', 'ice', 'lake', 'easy', 'hard', 'bug', 'family', 'maintain'].sum()
+    ht_mat = r_corex_df.groupby('hike_id')['parking', 'rock', 'ice', 'lake', 'easy', 'hard', 'bug', 'family', 'maintain'].sum()
     ht_mat.to_csv('../src/ht_mat.csv')
     
-    # Append top 3 tags to hikes_df
-    get_top_3_tags(hike_tag_mat.loc['hike_1'])
-    
+    # Append top 3 tags to hikes_df    
     tag_col = []
     for _, row in ht_mat.iterrows():
         tag_col.append(get_top_3_tags(row))
     ht_mat['temp_tag'] = tag_col
-    ht_mat.drop(columns='temp_tag', inplace=True)
     hikes_df = hikes_df.merge(ht_mat['temp_tag'], left_index=True, right_index=True, how='left')
-    
+    # drop temp tags from htmat
+    ht_mat.drop(columns='temp_tag', inplace=True)
     
     # Write function to combine all of the above together
     # returns portion of hikes_df that is related to the input hike
@@ -175,11 +191,13 @@ if __name__ == "__main__":
     # Get 50 similar hikes by reviews
     sim_idx = compare_by_cosine_distance(y=ht_mat.loc[[comp_id]], X=ht_mat, n_to_limit=50)
     comp_dt = dt_mat.loc[[comp_id]]
-    sim_dt = dt_mat.loc[ht_mat.iloc[sim_idx].index]
+    sim_dt = dt_mat.loc[sim_idx]
     comp_dt.head()
     dt_idx = compare_by_cosine_distance(y=comp_dt, X=sim_dt, n_to_limit=10)
     hikes_df.loc[[comp_id]]
-    hikes_df.iloc[dt_idx]
+    hikes_df.loc[dt_idx]
+
+    hikes_df.loc[comparrison(np.random.choice(hikes_df.index), ht_mat, dt_mat, 30, 10)]
 
 
 """    # Select one hike from New Jersey for Comparision 
