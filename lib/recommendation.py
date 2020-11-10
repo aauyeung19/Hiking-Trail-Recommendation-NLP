@@ -110,6 +110,12 @@ def filter_hikes(hikes_df, states=None, parks=None, max_len=None, min_len=0):
     
     return filtered_hikes
 
+def get_top_3_tags(hike):
+    tags = ['parking', 'rock', 'ice', 'lake', 'easy', 'hard',
+       'bug', 'family', 'maintain']
+    idx = np.argsort(hike)[:-4:-1]
+    toptags = ', '.join([tags[i] for i in idx])
+    return toptags
 
 def user_recommendation(comp_id, r_):
     """
@@ -134,10 +140,52 @@ if __name__ == "__main__":
     pipe = NLPPipe()
     pipe.load_pipe(filename='../models/nmf_trail_desc.mdl')
 
-    # Select one hike from New Jersey for Comparision 
+    hikes_dtm = pipe.vectorizer.transform(hikes_df['cleaned_descriptions'])
+    hikes_df, topics = pipe.topic_transform_df(hikes_df, hikes_dtm, append_max=False)
+    # Doc-Topic Matrix
+    dt_mat = hikes_df[topics]
+    
+    hikes_df.drop(columns=topics, inplace=True)
+
+    # Prepare Hike-Tag-Matrix
+    cor_df = pd.read_csv('../src/reviews_corex.csv', index_col=0)
+    tags = ['parking', 'rock', 'ice', 'lake', 'easy', 'hard',
+       'bug', 'family', 'maintain']
+
+    # Rounds tags to 1 for topic importance   
+    cor_df[['parking', 'rock', 'ice', 'lake', 'easy', 'hard', 'bug', 'family', 'maintain']] = cor_df[['parking', 'rock', 'ice', 'lake', 'easy', 'hard', 'bug', 'family', 'maintain']].round(1)
+    # hike tag matrix
+    ht_mat = cor_df.groupby('hike_id')['parking', 'rock', 'ice', 'lake', 'easy', 'hard', 'bug', 'family', 'maintain'].sum()
+    ht_mat.to_csv('../src/ht_mat.csv')
+    
+    # Append top 3 tags to hikes_df
+    get_top_3_tags(hike_tag_mat.loc['hike_1'])
+    
+    tag_col = []
+    for _, row in ht_mat.iterrows():
+        tag_col.append(get_top_3_tags(row))
+    ht_mat['temp_tag'] = tag_col
+    ht_mat.drop(columns='temp_tag', inplace=True)
+    hikes_df = hikes_df.merge(ht_mat['temp_tag'], left_index=True, right_index=True, how='left')
+    
+    
+    # Write function to combine all of the above together
+    # returns portion of hikes_df that is related to the input hike
+    comp_id = np.random.choice(hikes_df.index)
+    # Get 50 similar hikes by reviews
+    sim_idx = compare_by_cosine_distance(y=ht_mat.loc[[comp_id]], X=ht_mat, n_to_limit=50)
+    comp_dt = dt_mat.loc[[comp_id]]
+    sim_dt = dt_mat.loc[ht_mat.iloc[sim_idx].index]
+    comp_dt.head()
+    dt_idx = compare_by_cosine_distance(y=comp_dt, X=sim_dt, n_to_limit=10)
+    hikes_df.loc[[comp_id]]
+    hikes_df.iloc[dt_idx]
+
+
+"""    # Select one hike from New Jersey for Comparision 
     nj = ['New Jersey']
     nj_hikes = filter_hikes(hikes_df, nj)
-   # want to check specific hikes
+    # want to check specific hikes
     comp_id = np.random.choice(nj_hikes.index)
 
 
@@ -153,9 +201,6 @@ if __name__ == "__main__":
     # Get 20 hikes by topic cosine closeness
     similar_topics = compare_hikes_by_desc(pipe, filtered_hikes, comp_id, 20)
 
-    # Embedded top 20
-    similar_vecs = compare_hikes_by_desc_vec(filtered_hikes, comp_id, 20)
-    
     # load reviews
     reviews_df = pd.read_csv('../src/clean_reviews.csv', index_col=0)
     reviews_df.set_index('hike_id', inplace=True)
@@ -166,9 +211,6 @@ if __name__ == "__main__":
     collab_idx = user_recommendation(comp_id, r_)
     collab_hikes = hikes_df.loc[collab_idx]
 
-    hikes_df.loc['hike_8002']['link']
-    r_piv
-
     ### COMBINATION OF REVIEW AND DESCRIPTION TOPICS
     r_piv = pd.read_csv('../src/reviews_piv.csv', index_col=0)
     X = r_piv
@@ -178,3 +220,4 @@ if __name__ == "__main__":
     h_idx = X.iloc[compare_by_cosine_distance(X, y, 10)].index
     a = hikes_df.loc[h_idx]
     compare_hikes_by_desc(pipe, a, comp_ids, n_hikes_to_show=2)
+"""
