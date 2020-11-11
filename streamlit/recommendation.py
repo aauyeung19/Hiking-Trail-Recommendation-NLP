@@ -16,7 +16,6 @@ System 2: Determining distance metrics based on trail descriptions from NMF
 """
 
 
-from nlp import NLPPipe
 import pandas as pd
 import pickle
 from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
@@ -116,7 +115,7 @@ def comparrison(comp_id, ht_mat, dt_mat, r_lim=50, desc_lim=10):
         r_lim(int): Primary limit on how many similarly reviewed hikes to consider
         desc_lim(int): Limit on how may hikes to show by similar descriptions
     Returns the indexes of the hikes from the Hike_df
-    
+
     ### Important: DO NOT SORT MATRIXIES.  the ht mat and hike_df should have the same indexes
     """
     sim_idx = compare_by_cosine_distance(y=ht_mat.loc[[comp_id]], X=ht_mat, n_to_limit=r_lim) # 
@@ -126,7 +125,8 @@ def comparrison(comp_id, ht_mat, dt_mat, r_lim=50, desc_lim=10):
     return dt_idx
 
 if __name__ == "__main__":
-    
+    from nlp import NLPPipe
+
     # load hike info dataframe 
     hikes_df = pd.read_csv('../src/clean_all_hikes.csv', index_col=0)
     hikes_df.set_index('hike_id', inplace=True) 
@@ -181,6 +181,7 @@ if __name__ == "__main__":
     # drop temp tags from htmat
     ht_mat.drop(columns='temp_tag', inplace=True)
     
+    dt_mat.to_csv('dt_mat.csv')
     hike_tag_dummies.to_csv('hike_tag_dummies.csv')
     ht_mat.to_csv('ht_mat.csv')
     hikes_df.to_csv('hikes_df.csv')
