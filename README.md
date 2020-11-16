@@ -2,5 +2,15 @@
 
 The goal of this project is to gain insight on hiking trails in the Tri-State Area
 
+# Project 3: Classification
+## Objective:
 
-This is an update during the Investigation!
+## Methodology
+ 
+
+## Data:
+
+## Technologies:
+
+
+## Summary
