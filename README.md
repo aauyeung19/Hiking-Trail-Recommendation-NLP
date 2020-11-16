@@ -19,3 +19,7 @@ NLP Technologies: NLTK, spaCy, CorEx
 Streamlit: Deployment of Application 
 
 ## Summary
+With the recommendation system built, I will have to wait until I have a chance to try out the hikes before I can give it my full backing!
+It sure does pass the eye test. 
+https://trailrecommendation.herokuapp.com/
+*Note: The data for the app only covers certain states due to time, I was not able to scrape all 50 states.  This will be fixed in future iterations*
