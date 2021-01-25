@@ -4,9 +4,9 @@ In this time of social distancing, people are looking for different and new ways
 
 ## Methodology
 To generate recommendations, I had to go through three steps.  
-1. Process and Clean the Data to prepare the data for step 2
-2. Perform Topic Modelling to group descriptions and reviews into topics
-3. Generate Recommendation based on similarity in reviews and hike descriptions 
+1. Process and Clean the Data to prepare the data for step 2.  This included using a cleaning script that could be applied onto the entire corpus.  Aside from standard cleaning procedures like removing punctuation and numbers, I used spaCy to lemmatize, remove pronouns, and remove location names from the trail reviews. 
+2. Performed Topic Modeling to group descriptions and reviews into topics.  This was done in two processes.  While NMF was a good solution for parsing trail descriptions and identifying key features, I needed something that would allow me to identify key elements in the reviews.  For that I chose to go with an anchored corex model so I could identify painpoints (if any) of each trail.
+3. Generate Recommendation based on similarity in reviews and hike descriptions.  Something I found when cleaning the trail reviews was that people are most likely to only leave a review on 1 to 2 trails with very little overlap between users.  This made it difficult to perform collaborative filtering.  With that in mind, I opted for a content based filtering system that utilized two tables.  After the user selects the hike they enjoyed,  the app searches for other trails that had similar reviews (ex: If many people left reviews discussing the wildlife or types of views, hikes also discussing those topics would be returned).  Then, the app will sort that filtered list of hikes and return trails with similar trail descriptions.  This would act as a word of mouth recommendation system.  If many people are saying the same thing about two independent hikes, they must be similar! This way, the recommendation would be able to return hikes that are have similar reviews and similar features.  
 
 ## Data:
 14,000 Trail Descriptions with 400,000 Reviews and 2,000,000 Ratings from AllTrails.com
